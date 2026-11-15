@@ -51,6 +51,7 @@ export interface MultiplayerPlayer {
   totalScore: number;
   status: PlayerRoundStatus;
   rank?: number;
+  lastHeartbeat?: number;
 }
 
 export interface MultiplayerRoomState {
@@ -80,15 +81,18 @@ export interface MultiplayerRoomState {
   countdownEndTime?: number;
   players: Record<string, MultiplayerPlayer>;
   winnerId?: string;
+  isForfeitVictory?: boolean;
+  forfeitedPlayerName?: string;
 }
 
 export type ClientAction =
   | { type: 'JOIN_ROOM'; roomId: string; playerName: string; avatar?: string; playerId?: string }
-  | { type: 'CREATE_ROOM'; playerName: string; avatar?: string; category?: string; maxPlayers?: number; isPublic?: boolean }
-  | { type: 'QUICK_JOIN'; playerName: string; avatar?: string }
+  | { type: 'CREATE_ROOM'; playerName: string; avatar?: string; category?: string; maxPlayers?: number; isPublic?: boolean; playerId?: string }
+  | { type: 'QUICK_JOIN'; playerName: string; avatar?: string; playerId?: string }
   | { type: 'START_ROUND'; roomId: string }
   | { type: 'GUESS_LETTER'; roomId: string; char: string; clientTimestamp: number; playerId?: string }
   | { type: 'PING'; clientTimestamp: number }
+  | { type: 'HEARTBEAT'; roomId: string; playerId: string }
   | { type: 'LEAVE_ROOM'; roomId?: string; playerId?: string }
   | { type: 'UPDATE_PLAYER_NAME'; roomId: string; newName: string; playerId?: string }
   | { type: 'SET_PLAYER_PRESENCE'; name: string }
@@ -99,6 +103,7 @@ export type ServerEvent =
   | { type: 'ROOM_STATE'; room: MultiplayerRoomState }
   | { type: 'PLAYER_JOINED'; player: MultiplayerPlayer }
   | { type: 'PLAYER_LEFT'; playerId: string }
+  | { type: 'FORFEIT_VICTORY'; winnerId: string; winnerName: string; forfeitedPlayerName: string; room: MultiplayerRoomState }
   | { type: 'ROUND_STARTED'; room: MultiplayerRoomState }
   | { type: 'OPPONENT_UPDATE'; playerId: string; canopyHealth: number; wrongGuesses: number; solvedCount: number; wordsSolved?: number; status: PlayerRoundStatus }
   | { type: 'RUSH_TRIGGERED'; rushSeconds: number; triggeredBy: { id: string; name: string }; remainingSeconds: number }

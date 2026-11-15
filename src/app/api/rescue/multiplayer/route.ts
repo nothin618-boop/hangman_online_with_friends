@@ -18,6 +18,8 @@ import {
   ensureUniquePlayerName,
   assignUniqueAvatar,
   getRandomOperativeName,
+  leaveRoom,
+  purgeInactivePlayers,
 } from '@/lib/cyber_rescue/multiplayer/roomEngine';
 
 export const dynamic = 'force-dynamic';
@@ -101,6 +103,37 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   }
 
+  const callerPlayerId = searchParams.get('playerId');
+  if (callerPlayerId && room.players[callerPlayerId]) {
+    room.players[callerPlayerId].lastHeartbeat = Date.now();
+  }
+
+  // Purge any inactive players (> 8000ms silence)
+  const purge = purgeInactivePlayers(room, Date.now(), 8000);
+  if (purge.purgedPlayerIds.length > 0) {
+    room = purge.room;
+    for (const pid of purge.purgedPlayerIds) {
+      pushEvent(room.roomId, { type: 'PLAYER_LEFT', playerId: pid });
+    }
+    if (room.isForfeitVictory && room.winnerId) {
+      const winner = room.players[room.winnerId];
+      pushEvent(room.roomId, {
+        type: 'FORFEIT_VICTORY',
+        winnerId: room.winnerId,
+        winnerName: winner?.name || 'Winner',
+        forfeitedPlayerName: room.forfeitedPlayerName || 'Opponent',
+        room,
+      });
+    }
+    pushEvent(room.roomId, { type: 'ROOM_STATE', room });
+    if (Object.keys(room.players).length === 0) {
+      rooms.delete(room.roomId);
+      if (room.roomCode) roomCodes.delete(room.roomCode.toUpperCase());
+    } else {
+      rooms.set(room.roomId, room);
+    }
+  }
+
   // Authoritative server clock tick if round is running
   if (room.status === 'playing' || room.status === 'rush') {
     const tick = tickRoomClock(room, Date.now());
@@ -133,7 +166,7 @@ export async function POST(req: NextRequest) {
     const action: ClientAction & { botName?: string } = await req.json();
 
     if (action.type === 'CREATE_ROOM') {
-      const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+      const playerId = action.playerId || ('p_' + Math.random().toString(36).substring(2, 8));
       const host = createPlayer({
         id: playerId,
         name: action.playerName || 'Player 1',
@@ -182,7 +215,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ error: `Room is full (max ${targetRoom.maxPlayers || 10})` }, { status: 400 });
         }
 
-        const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+        const playerId = action.playerId || ('p_' + Math.random().toString(36).substring(2, 8));
         const rawName = action.playerName || 'Player 2';
         const player = createPlayer({
           id: playerId,
@@ -203,6 +236,10 @@ export async function POST(req: NextRequest) {
           type: 'ROOM_STATE',
           room: updatedRoom,
         });
+      } else {
+        cleanPlayer.lastHeartbeat = Date.now();
+        updatedRoom.players[cleanPlayer.id] = cleanPlayer;
+        rooms.set(updatedRoom.roomId, updatedRoom);
       }
 
       return NextResponse.json({
@@ -221,29 +258,40 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
       const playerName = (action.playerName || 'Player 1').trim();
 
       if (targetRoom) {
-        const player = createPlayer({
-          id: playerId,
-          name: playerName,
-          avatar: action.avatar,
-          isHost: false,
-        });
+        let cleanPlayer = action.playerId && targetRoom.players[action.playerId]
+          ? targetRoom.players[action.playerId]
+          : null;
+        let updatedRoom = targetRoom;
 
-        const updatedRoom = joinRoom(targetRoom, player);
-        const cleanPlayer = updatedRoom.players[playerId] || player;
-        rooms.set(updatedRoom.roomId, updatedRoom);
+        if (!cleanPlayer) {
+          const playerId = action.playerId || ('p_' + Math.random().toString(36).substring(2, 8));
+          const player = createPlayer({
+            id: playerId,
+            name: playerName,
+            avatar: action.avatar,
+            isHost: false,
+          });
 
-        pushEvent(updatedRoom.roomId, {
-          type: 'PLAYER_JOINED',
-          player: cleanPlayer,
-        });
-        pushEvent(updatedRoom.roomId, {
-          type: 'ROOM_STATE',
-          room: updatedRoom,
-        });
+          updatedRoom = joinRoom(targetRoom, player);
+          cleanPlayer = updatedRoom.players[playerId] || player;
+          rooms.set(updatedRoom.roomId, updatedRoom);
+
+          pushEvent(updatedRoom.roomId, {
+            type: 'PLAYER_JOINED',
+            player: cleanPlayer,
+          });
+          pushEvent(updatedRoom.roomId, {
+            type: 'ROOM_STATE',
+            room: updatedRoom,
+          });
+        } else {
+          cleanPlayer.lastHeartbeat = Date.now();
+          updatedRoom.players[cleanPlayer.id] = cleanPlayer;
+          rooms.set(updatedRoom.roomId, updatedRoom);
+        }
 
         return NextResponse.json({
           type: 'ROOM_JOINED',
@@ -251,6 +299,7 @@ export async function POST(req: NextRequest) {
           room: updatedRoom,
         });
       } else {
+        const playerId = action.playerId || ('p_' + Math.random().toString(36).substring(2, 8));
         const host = createPlayer({
           id: playerId,
           name: playerName,
@@ -378,12 +427,44 @@ export async function POST(req: NextRequest) {
     }
 
     if (action.type === 'LEAVE_ROOM') {
-      if (action.roomId) {
-        const room = findRoomByCodeOrId(action.roomId);
+      if (action.roomId && action.playerId) {
+        let room = findRoomByCodeOrId(action.roomId);
         if (room) {
-          // Remove room if host or empty
-          rooms.delete(room.roomId);
-          if (room.roomCode) roomCodes.delete(room.roomCode.toUpperCase());
+          room = leaveRoom(room, action.playerId);
+          if (Object.keys(room.players).length === 0) {
+            rooms.delete(room.roomId);
+            if (room.roomCode) roomCodes.delete(room.roomCode.toUpperCase());
+          } else {
+            rooms.set(room.roomId, room);
+            pushEvent(room.roomId, {
+              type: 'PLAYER_LEFT',
+              playerId: action.playerId,
+            });
+            if (room.isForfeitVictory && room.winnerId) {
+              const winner = room.players[room.winnerId];
+              pushEvent(room.roomId, {
+                type: 'FORFEIT_VICTORY',
+                winnerId: room.winnerId,
+                winnerName: winner?.name || 'Winner',
+                forfeitedPlayerName: room.forfeitedPlayerName || 'Opponent',
+                room,
+              });
+            }
+            pushEvent(room.roomId, {
+              type: 'ROOM_STATE',
+              room,
+            });
+          }
+        }
+      }
+      return NextResponse.json({ ok: true });
+    }
+
+    if (action.type === 'HEARTBEAT') {
+      if (action.roomId && action.playerId) {
+        const room = findRoomByCodeOrId(action.roomId);
+        if (room && room.players[action.playerId]) {
+          room.players[action.playerId].lastHeartbeat = Date.now();
         }
       }
       return NextResponse.json({ ok: true });

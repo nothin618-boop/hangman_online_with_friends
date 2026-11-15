@@ -8,6 +8,8 @@ import {
   createPlayer,
   createRoom,
   joinRoom,
+  leaveRoom,
+  purgeInactivePlayers,
   startRound,
   processPlayerGuess,
   tickRoomClock,
@@ -486,6 +488,67 @@ describe('CyberRescue Multiplayer Rules & Scoring Engine', () => {
       expect(pongEvent.clientTimestamp).toBe(clientTime);
 
       transport.destroy();
+    });
+
+    it('re-uses persistent device player ID on reconnect without duplicating presence', () => {
+      const transport = new MultiplayerTransport();
+      const deviceId1 = transport.getOrCreateDeviceId();
+      const deviceId2 = transport.getOrCreateDeviceId();
+      expect(deviceId1).toBe(deviceId2);
+      expect(deviceId1.startsWith('p_')).toBe(true);
+      transport.destroy();
+    });
+  });
+
+  describe('11. Disconnect, Forfeit Victory & Heartbeat Purge', () => {
+    it('declares Forfeit Victory when opponent leaves during active playing round', () => {
+      const host = createPlayer({ id: 'p_player1', name: 'Alpha', avatar: 'sticker_classic', isHost: true });
+      const guest = createPlayer({ id: 'p_player2', name: 'Bravo', avatar: 'sticker_shades', isHost: false });
+      let room = createRoom({ roomId: 'test-forfeit', hostPlayer: host, maxPlayers: 2 });
+      room = joinRoom(room, guest);
+      room = startRound(room, 'CYBER');
+      expect(room.status).toBe('playing');
+      expect(Object.keys(room.players).length).toBe(2);
+
+      // Player 2 closes tab
+      const afterLeave = leaveRoom(room, 'p_player2');
+      expect(afterLeave.status).toBe('match_over');
+      expect(afterLeave.isForfeitVictory).toBe(true);
+      expect(afterLeave.winnerId).toBe('p_player1');
+      expect(afterLeave.forfeitedPlayerName).toBe('Bravo');
+      expect(Object.keys(afterLeave.players)).toEqual(['p_player1']);
+    });
+
+    it('cleanly removes player from lobby without fake victory when tab closes before match starts', () => {
+      const host = createPlayer({ id: 'p_player1', name: 'Alpha', avatar: 'sticker_classic', isHost: true });
+      const guest = createPlayer({ id: 'p_player2', name: 'Bravo', avatar: 'sticker_shades', isHost: false });
+      let room = createRoom({ roomId: 'test-lobby', hostPlayer: host, maxPlayers: 2 });
+      room = joinRoom(room, guest);
+      expect(room.status).toBe('in_lobby');
+
+      // Guest closes tab before game starts
+      const afterLeave = leaveRoom(room, 'p_player2');
+      expect(afterLeave.status).toBe('in_lobby');
+      expect(afterLeave.isForfeitVictory).toBeUndefined();
+      expect(Object.keys(afterLeave.players)).toEqual(['p_player1']);
+    });
+
+    it('automatically purges inactive players who have not sent heartbeats in > 8000ms', () => {
+      const host = createPlayer({ id: 'p_player1', name: 'Alpha', avatar: 'sticker_classic', isHost: true });
+      const guest = createPlayer({ id: 'p_player2', name: 'Bravo', avatar: 'sticker_shades', isHost: false });
+      let room = createRoom({ roomId: 'test-purge', hostPlayer: host, maxPlayers: 2 });
+      room = joinRoom(room, guest);
+      room = startRound(room, 'MATRIX');
+
+      const now = Date.now();
+      room.players['p_player1'].lastHeartbeat = now;
+      room.players['p_player2'].lastHeartbeat = now - 9000; // 9 seconds silent
+
+      const { room: purgedRoom, purgedPlayerIds } = purgeInactivePlayers(room, now, 8000);
+      expect(purgedPlayerIds).toEqual(['p_player2']);
+      expect(purgedRoom.isForfeitVictory).toBe(true);
+      expect(purgedRoom.winnerId).toBe('p_player1');
+      expect(Object.keys(purgedRoom.players)).toEqual(['p_player1']);
     });
   });
 });

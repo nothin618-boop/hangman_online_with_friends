@@ -43,6 +43,19 @@ export class MultiplayerTransport {
   private tabPresenceMap: Map<string, string> = new Map();
   private isLeaving: boolean = false;
 
+  public getOrCreateDeviceId(): string {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('rescue_device_player_id');
+        if (stored) return stored;
+        const newId = 'p_' + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem('rescue_device_player_id', newId);
+        return newId;
+      } catch {}
+    }
+    return 'p_' + Math.random().toString(36).substring(2, 9);
+  }
+
   constructor(serverUrl?: string) {
     if (serverUrl) {
       this.serverUrl = serverUrl;
@@ -51,6 +64,16 @@ export class MultiplayerTransport {
       this.serverUrl = `ws://${host}:3001`;
     } else {
       this.serverUrl = 'ws://localhost:3001';
+    }
+
+    if (typeof window !== 'undefined') {
+      const onUnload = () => {
+        if (this.activeRoom && this.localPlayer) {
+          this.leaveRoom();
+        }
+      };
+      window.addEventListener('pagehide', onUnload);
+      window.addEventListener('beforeunload', onUnload);
     }
 
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -233,6 +256,9 @@ export class MultiplayerTransport {
   public async sendAction(action: ClientAction) {
     if (action.type === 'CREATE_ROOM' || action.type === 'JOIN_ROOM' || action.type === 'QUICK_JOIN') {
       this.isLeaving = false;
+      if (!action.playerId) {
+        action.playerId = this.getOrCreateDeviceId();
+      }
     }
     // 1. ULTRA-FAST PATH: Native WebSocket (sub-millisecond transmit, zero HTTP latency)
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -374,7 +400,8 @@ export class MultiplayerTransport {
       if (!this.activeRoom) return;
 
       try {
-        const res = await fetch(`/api/rescue/multiplayer?roomId=${encodeURIComponent(roomId)}&since=${this.lastServerSeq}`);
+        const myPid = this.localPlayer?.id || '';
+        const res = await fetch(`/api/rescue/multiplayer?roomId=${encodeURIComponent(roomId)}&since=${this.lastServerSeq}&playerId=${encodeURIComponent(myPid)}`);
         if (res.ok) {
           const data = await res.json();
           if (data.room) {
@@ -480,7 +507,7 @@ export class MultiplayerTransport {
         (this.activeRoom.roomCode?.toUpperCase() === searchKey || this.activeRoom.roomId === searchKey)
       ) {
         if (this.localPlayer && this.activeRoom.hostId === this.localPlayer.id) {
-          const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+          const playerId = (data as any).playerId || ('p_' + Math.random().toString(36).substring(2, 8));
           const remotePlayer = createPlayer({
             id: playerId,
             name: data.playerName || 'Operative Guest',
@@ -623,11 +650,30 @@ export class MultiplayerTransport {
   public leaveRoom() {
     this.isLeaving = true;
     const roomId = this.activeRoom?.roomId;
-    const playerId = this.localPlayer?.id;
+    const playerId = this.localPlayer?.id || this.getOrCreateDeviceId();
     if (this.ws && this.ws.readyState === WebSocket.OPEN && roomId) {
       try {
         this.ws.send(JSON.stringify({ type: 'LEAVE_ROOM', roomId, playerId }));
       } catch { }
+    }
+    // Also send HTTP notice/beacon for Vercel / serverless deployments
+    if (roomId && playerId) {
+      const payload = JSON.stringify({ type: 'LEAVE_ROOM', roomId, playerId });
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        try {
+          const blob = new Blob([payload], { type: 'application/json' });
+          navigator.sendBeacon('/api/rescue/multiplayer', blob);
+        } catch {}
+      } else if (typeof fetch !== 'undefined') {
+        try {
+          fetch('/api/rescue/multiplayer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true,
+          }).catch(() => {});
+        } catch {}
+      }
     }
     if (this.channel && playerId) {
       this.channel.postMessage({
@@ -685,7 +731,7 @@ export class MultiplayerTransport {
         } catch (e) { }
       }
 
-      const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+      const playerId = action.playerId || this.getOrCreateDeviceId();
       const playerName = action.playerName.trim() || 'Operative ' + Math.floor(10 + Math.random() * 90);
 
       if (existingPublicRoom && Object.keys(existingPublicRoom.players).length < (existingPublicRoom.maxPlayers || 12)) {
@@ -774,7 +820,7 @@ export class MultiplayerTransport {
     }
 
     if (action.type === 'CREATE_ROOM') {
-      const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+      const playerId = action.playerId || this.getOrCreateDeviceId();
       const host = createPlayer({
         id: playerId,
         name: action.playerName,
@@ -838,7 +884,7 @@ export class MultiplayerTransport {
           }
         }
 
-        const playerId = 'p_' + Math.random().toString(36).substring(2, 8);
+        const playerId = action.playerId || this.getOrCreateDeviceId();
         const player = createPlayer({
           id: playerId,
           name: action.playerName.trim() || 'Operative ' + Math.floor(10 + Math.random() * 90),

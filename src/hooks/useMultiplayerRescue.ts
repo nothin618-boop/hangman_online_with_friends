@@ -144,12 +144,31 @@ export function useMultiplayerRescue(): UseMultiplayerRescueReturn {
           setRoom((prev) => {
             if (!prev) return prev;
             const updated = { ...prev.players };
+            const leavingName = updated[event.playerId]?.name || 'Opponent';
             delete updated[event.playerId];
+            const remaining = Object.values(updated);
+            if ((prev.status === 'playing' || prev.status === 'rush') && remaining.length === 1) {
+              const winner = remaining[0];
+              return {
+                ...prev,
+                players: updated,
+                status: 'match_over',
+                winnerId: winner.id,
+                isForfeitVictory: true,
+                forfeitedPlayerName: leavingName,
+              };
+            }
             return {
               ...prev,
               players: updated,
             };
           });
+          setLastAnnouncement(`👋 A player left`);
+          break;
+
+        case 'FORFEIT_VICTORY':
+          setRoom(event.room);
+          setLastAnnouncement(`🏆 ${event.forfeitedPlayerName} disconnected! You win by forfeit!`);
           break;
 
         case 'RUSH_TRIGGERED':

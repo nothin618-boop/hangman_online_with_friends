@@ -272,6 +272,7 @@ export function createRoom(params: {
     name: hostName,
     avatar: hostAvatar,
     isHost: true,
+    lastHeartbeat: now,
   };
 
   return {
@@ -317,6 +318,7 @@ export function joinRoom(
           ...existing,
           name: resolvedName,
           avatar: resolvedAvatar,
+          lastHeartbeat: Date.now(),
           status: room.players[player.id].status === 'disconnected' ? 'typing' : room.players[player.id].status,
         },
       },
@@ -341,6 +343,7 @@ export function joinRoom(
         name: uniqueName,
         avatar: uniqueAvatar,
         isHost: false,
+        lastHeartbeat: Date.now(),
         status: room.status === 'playing' || room.status === 'rush' ? 'typing' : 'waiting',
       },
     },
@@ -351,6 +354,7 @@ export function leaveRoom(
   room: MultiplayerRoomState,
   playerId: string
 ): MultiplayerRoomState {
+  const leavingPlayer = room.players[playerId];
   const updatedPlayers = { ...room.players };
   delete updatedPlayers[playerId];
 
@@ -367,11 +371,45 @@ export function leaveRoom(
     }
   }
 
+  const remainingPlayers = Object.values(updatedPlayers);
+
+  // If match was in progress and only 1 player is left, declare Forfeit Victory
+  if ((room.status === 'playing' || room.status === 'rush') && remainingPlayers.length === 1) {
+    const winner = remainingPlayers[0];
+    return {
+      ...room,
+      hostId: nextHostId,
+      players: updatedPlayers,
+      status: 'match_over',
+      winnerId: winner.id,
+      isForfeitVictory: true,
+      forfeitedPlayerName: leavingPlayer?.name || 'Opponent',
+    };
+  }
+
   return {
     ...room,
     hostId: nextHostId,
     players: updatedPlayers,
   };
+}
+
+export function purgeInactivePlayers(
+  room: MultiplayerRoomState,
+  now: number = Date.now(),
+  timeoutMs: number = 8000
+): { room: MultiplayerRoomState; purgedPlayerIds: string[] } {
+  let currentRoom = room;
+  const purgedPlayerIds: string[] = [];
+
+  for (const [id, player] of Object.entries(room.players)) {
+    if (player.lastHeartbeat && now - player.lastHeartbeat > timeoutMs) {
+      purgedPlayerIds.push(id);
+      currentRoom = leaveRoom(currentRoom, id);
+    }
+  }
+
+  return { room: currentRoom, purgedPlayerIds };
 }
 
 export function startRound(

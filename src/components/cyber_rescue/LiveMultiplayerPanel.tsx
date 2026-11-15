@@ -437,13 +437,28 @@ export const LiveMultiplayerPanel: React.FC<LiveMultiplayerPanelProps> = ({
         )}
 
         {room.status === 'match_over' && (
-          <div className="flex flex-col gap-2 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-center">
+          <div className={`flex flex-col gap-2 p-2.5 rounded-xl border text-center ${
+            room.isForfeitVictory 
+              ? 'bg-emerald-500/15 border-emerald-500/40' 
+              : 'bg-amber-500/10 border-amber-500/30'
+          }`}>
             <span className="text-xl">🏆</span>
-            <h4 className="font-bold text-amber-300 text-xs">MATCH COMPLETE (12 ROUNDS)</h4>
+            <h4 className={`font-bold text-xs ${room.isForfeitVictory ? 'text-emerald-300' : 'text-amber-300'}`}>
+              {room.isForfeitVictory ? 'VICTORY BY FORFEIT!' : 'MATCH COMPLETE (12 ROUNDS)'}
+            </h4>
             <p className="text-[11px] text-slate-300">
-              Champion: <strong className="text-amber-400">{sortedPlayers[0]?.name}</strong> ({sortedPlayers[0]?.totalScore} pts)
+              {room.isForfeitVictory ? (
+                <span>
+                  {room.forfeitedPlayerName || 'Opponent'} left the match.<br />
+                  Winner: <strong className="text-emerald-300">{sortedPlayers[0]?.name || 'You'}</strong>
+                </span>
+              ) : (
+                <span>
+                  Champion: <strong className="text-amber-400">{sortedPlayers[0]?.name}</strong> ({sortedPlayers[0]?.totalScore} pts)
+                </span>
+              )}
             </p>
-            {onStartRound && (
+            {onStartRound && !room.isForfeitVictory && (
               <button
                 type="button"
                 onClick={onStartRound}

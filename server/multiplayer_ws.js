@@ -795,11 +795,27 @@ export function startWsServer(port = PORT) {
             }
             const room = rooms.get(info.roomId);
             if (room && room.players[info.playerId]) {
+              const leavingPlayer = room.players[info.playerId];
               delete room.players[info.playerId];
               if (Object.keys(room.players).length === 0) {
                 rooms.delete(room.roomId);
                 if (room.roomCode) roomCodes.delete(room.roomCode.toUpperCase());
               } else {
+                const remaining = Object.values(room.players);
+                if ((room.status === 'playing' || room.status === 'rush') && remaining.length === 1) {
+                  const winner = remaining[0];
+                  room.status = 'match_over';
+                  room.winnerId = winner.id;
+                  room.isForfeitVictory = true;
+                  room.forfeitedPlayerName = leavingPlayer?.name || 'Opponent';
+                  broadcastToRoom(room.roomId, {
+                    type: 'FORFEIT_VICTORY',
+                    winnerId: winner.id,
+                    winnerName: winner.name,
+                    forfeitedPlayerName: room.forfeitedPlayerName,
+                    room,
+                  });
+                }
                 checkRoomLobbyCountdown(room);
                 broadcastToRoom(room.roomId, {
                   type: 'PLAYER_LEFT',
@@ -948,11 +964,27 @@ export function startWsServer(port = PORT) {
       if (info) {
         const room = rooms.get(info.roomId);
         if (room && room.players[info.playerId]) {
+          const leavingPlayer = room.players[info.playerId];
           delete room.players[info.playerId];
           if (Object.keys(room.players).length === 0) {
             rooms.delete(room.roomId);
             if (room.roomCode) roomCodes.delete(room.roomCode.toUpperCase());
           } else {
+            const remaining = Object.values(room.players);
+            if ((room.status === 'playing' || room.status === 'rush') && remaining.length === 1) {
+              const winner = remaining[0];
+              room.status = 'match_over';
+              room.winnerId = winner.id;
+              room.isForfeitVictory = true;
+              room.forfeitedPlayerName = leavingPlayer?.name || 'Opponent';
+              broadcastToRoom(room.roomId, {
+                type: 'FORFEIT_VICTORY',
+                winnerId: winner.id,
+                winnerName: winner.name,
+                forfeitedPlayerName: room.forfeitedPlayerName,
+                room,
+              });
+            }
             checkRoomLobbyCountdown(room);
             broadcastToRoom(room.roomId, {
               type: 'PLAYER_LEFT',

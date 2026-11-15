@@ -271,6 +271,13 @@ export const CyberRescueGame: React.FC = () => {
     });
   }, [selectedMode, mp.room, mp.localPlayer]);
 
+  // Play victory sound on forfeit win
+  useEffect(() => {
+    if (mp.room?.isForfeitVictory) {
+      cyberAudio.playVictory();
+    }
+  }, [mp.room?.isForfeitVictory]);
+
   // Handle letter guess
   const handleGuess = useCallback(
     (letter: string) => {
