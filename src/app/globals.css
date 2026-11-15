@@ -1,0 +1,480 @@
+@import url('https://fonts.googleapis.com/css2?family=Love+Ya+Like+A+Sister&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.font-pencil {
+  font-family: var(--font-pencil), 'Love Ya Like A Sister', cursive, sans-serif;
+}
+
+.font-player, .font-modern {
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+:root {
+  --background: #0b0a16;
+  --surface: #13112a;
+  --surface-elevated: #1c1a38;
+  --cyber-cyan: #a78bfa;
+  --cyber-green: #00ff88;
+  --cyber-amber: #f59e0b;
+  --cyber-red: #ff0055;
+  --cyber-purple: #a855f7;
+}
+
+body {
+  color: #e2e8f0;
+  background-color: var(--background);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  overflow-x: hidden;
+}
+
+/* CRT Overlay removed per user preference */
+.crt-overlay {
+  display: none !important;
+}
+
+/* Neon Glow Utilities */
+.glow-cyan {
+  text-shadow: 0 0 10px rgba(167, 139, 250, 0.7);
+}
+
+.glow-green {
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.7);
+}
+
+.glow-red {
+  text-shadow: 0 0 10px rgba(255, 0, 85, 0.7);
+}
+
+.glow-amber {
+  text-shadow: 0 0 10px rgba(245, 158, 11, 0.7);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ==========================================================
+   STICKMAN JETPACK ANIMATION ENGINE
+   ========================================================== */
+
+@keyframes stickmanHover {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+}
+
+@keyframes stickmanPanic {
+  0%, 100% {
+    transform: translateY(0px) rotate(-3deg);
+  }
+  25% {
+    transform: translateY(4px) rotate(5deg) translateX(-3px);
+  }
+  50% {
+    transform: translateY(-4px) rotate(-5deg);
+  }
+  75% {
+    transform: translateY(3px) rotate(4deg) translateX(3px);
+  }
+}
+
+@keyframes stickmanZap {
+  0% { transform: scale(1) translate(0, 0); filter: drop-shadow(0 0 10px #ff0055); }
+  15% { transform: scale(1.15) translate(-6px, 8px); filter: brightness(2.2) drop-shadow(0 0 30px #ff0055); }
+  35% { transform: scale(0.92) translate(6px, -4px); filter: brightness(1.5); }
+  55% { transform: scale(1.08) translate(-4px, 5px); }
+  75% { transform: scale(0.96) translate(3px, -2px); }
+  100% { transform: scale(1) translate(0, 0); }
+}
+
+@keyframes stickmanCelebrate {
+  0% { transform: scale(1) translateY(0); }
+  25% { transform: scale(1.15) translateY(-16px); filter: drop-shadow(0 0 25px #00ff88); }
+  55% { transform: scale(1.05) translateY(-6px); }
+  80% { transform: scale(1.1) translateY(-10px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes flameFlicker {
+  0%, 100% { transform: scaleY(1) scaleX(1); opacity: 0.9; }
+  25% { transform: scaleY(1.3) scaleX(0.92); opacity: 1; }
+  50% { transform: scaleY(0.8) scaleX(1.1); opacity: 0.75; }
+  75% { transform: scaleY(1.2) scaleX(0.95); opacity: 0.95; }
+}
+
+@keyframes flameSputter {
+  0%, 100% { transform: scaleY(0.6) scaleX(0.8); opacity: 0.5; }
+  30% { transform: scaleY(1.1) scaleX(1.1); opacity: 0.9; }
+  60% { transform: scaleY(0.3) scaleX(0.7); opacity: 0.3; }
+}
+
+@keyframes legFlutterLeft {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(7deg); }
+}
+
+@keyframes legFlutterRight {
+  0%, 100% { transform: rotate(6deg); }
+  50% { transform: rotate(-5deg); }
+}
+
+@keyframes armFlailFrantic {
+  0%, 100% { transform: rotate(15deg); }
+  50% { transform: rotate(-30deg); }
+}
+
+@keyframes pulseGlowRing {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.anim-stickman-hover {
+  animation: stickmanHover 3s ease-in-out infinite;
+}
+
+.anim-stickman-panic {
+  animation: stickmanPanic 0.7s ease-in-out infinite;
+}
+
+.anim-stickman-zap {
+  animation: stickmanZap 0.5s ease-out;
+}
+
+.anim-stickman-celebrate {
+  animation: stickmanCelebrate 0.65s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.anim-flame-flicker {
+  animation: flameFlicker 0.15s ease-in-out infinite alternate;
+  transform-origin: top center;
+}
+
+.anim-flame-sputter {
+  animation: flameSputter 0.25s steps(2, start) infinite;
+  transform-origin: top center;
+}
+
+.anim-leg-left {
+  animation: legFlutterLeft 2.2s ease-in-out infinite;
+  transform-origin: 60px 70px;
+}
+
+.anim-leg-right {
+  animation: legFlutterRight 2.2s ease-in-out infinite 0.3s;
+  transform-origin: 60px 70px;
+}
+
+.anim-arm-flail {
+  animation: armFlailFrantic 0.4s ease-in-out infinite;
+  transform-origin: 60px 42px;
+}
+
+.anim-glow-ring {
+  animation: pulseGlowRing 0.8s ease-out infinite;
+}
+
+/* ========================================================================== */
+/* RAINBOW PARACHUTE & CLOUD JUMPER KEYFRAMES & UTILITY CLASSES               */
+/* ========================================================================== */
+
+@keyframes parachuteSway {
+  0%, 100% {
+    transform: rotate(-2.5deg) translateY(0px);
+  }
+  50% {
+    transform: rotate(2.5deg) translateY(-6px);
+  }
+}
+
+@keyframes stickmanWobble {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-8deg) scale(1.08) translateY(-4px); }
+  50% { transform: rotate(8deg) scale(0.96) translateY(2px); }
+  75% { transform: rotate(-4deg) scale(1.02); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+@keyframes stickmanJump {
+  0% { transform: scale(1) translateY(0); }
+  30% { transform: scale(1.12) translateY(-18px); }
+  60% { transform: scale(1.04) translateY(-6px); }
+  85% { transform: scale(1.08) translateY(-12px); }
+  100% { transform: scale(1) translateY(0); }
+}
+
+@keyframes stickmanLanded {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.03);
+  }
+}
+
+@keyframes parachuteAscend {
+  0% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-30px) scale(1.06); }
+  100% { transform: translateY(-60px) scale(1.1); }
+}
+
+@keyframes cloudDrift {
+  0%, 100% {
+    transform: translateY(0px) scaleX(1);
+  }
+  50% {
+    transform: translateY(-4px) scaleX(1.015);
+  }
+}
+
+@keyframes cloudBoing {
+  0% { transform: scaleY(1) translateY(0); }
+  20% { transform: scaleY(0.75) scaleX(1.1) translateY(8px); }
+  45% { transform: scaleY(1.15) scaleX(0.92) translateY(-6px); }
+  70% { transform: scaleY(0.92) scaleX(1.04) translateY(2px); }
+  100% { transform: scaleY(1) translateY(0); }
+}
+
+@keyframes starsSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+@keyframes handWave {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(25deg); }
+}
+
+@keyframes legKickLeft {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes legKickRight {
+  0%, 100% { transform: rotate(7deg); }
+  50% { transform: rotate(-6deg); }
+}
+
+.anim-parachute-sway {
+  animation: parachuteSway 3.2s ease-in-out infinite;
+  transform-origin: top center;
+}
+
+.anim-stickman-wobble {
+  animation: stickmanWobble 0.55s ease-out;
+  transform-origin: top center;
+}
+
+.anim-stickman-jump {
+  animation: stickmanJump 0.65s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  transform-origin: center;
+}
+
+.anim-stickman-landed {
+  animation: stickmanLanded 2.5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.anim-parachute-ascend {
+  animation: parachuteAscend 2s ease-in-out infinite alternate;
+  transform-origin: top center;
+}
+
+.anim-cloud-drift {
+  animation: cloudDrift 4s ease-in-out infinite;
+}
+
+.anim-cloud-boing {
+  animation: cloudBoing 0.8s ease-out;
+  transform-origin: bottom center;
+}
+
+.anim-stars-spin {
+  animation: starsSpin 4s linear infinite;
+}
+
+.anim-star-twinkle {
+  animation: starTwinkle 2s ease-in-out infinite;
+}
+
+.anim-star-twinkle-delay {
+  animation: starTwinkle 2.5s ease-in-out infinite 1s;
+}
+
+.anim-hand-wave {
+  animation: handWave 0.6s ease-in-out infinite;
+  transform-origin: 90px 120px;
+}
+
+/* ========================================================================== */
+/* STICKMAN LEG ANIMATIONS (ANCHORED AT HIP 100px 158px)                      */
+/* ========================================================================== */
+
+@keyframes legSwingLeft {
+  0%, 100% {
+    transform: rotate(-3.5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes legSwingRight {
+  0%, 100% {
+    transform: rotate(4.5deg);
+  }
+  50% {
+    transform: rotate(-4deg);
+  }
+}
+
+@keyframes legPanicLeft {
+  0%, 100% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+
+@keyframes legPanicRight {
+  0%, 100% {
+    transform: rotate(10deg);
+  }
+  50% {
+    transform: rotate(-8deg);
+  }
+}
+
+@keyframes legCelebrateLeft {
+  0%, 100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(11deg);
+  }
+}
+
+@keyframes legCelebrateRight {
+  0%, 100% {
+    transform: rotate(11deg);
+  }
+  50% {
+    transform: rotate(-6deg);
+  }
+}
+
+.anim-leg-swing-left {
+  transform-box: view-box;
+  transform-origin: 100px 158px;
+  animation: legSwingLeft 2.2s ease-in-out infinite;
+}
+
+.anim-leg-swing-right {
+  transform-box: view-box;
+  transform-origin: 100px 158px;
+  animation: legSwingRight 2.2s ease-in-out infinite 0.35s;
+}
+
+.anim-leg-panic-left {
+  transform-box: view-box;
+  transform-origin: 100px 158px;
+  animation: legPanicLeft 0.28s ease-in-out infinite;
+}
+
+.anim-leg-panic-right {
+  transform-box: view-box;
+  transform-origin: 100px 158px;
+  animation: legPanicRight 0.28s ease-in-out infinite 0.09s;
+}
+
+.anim-leg-celebrate-left {
+  transform-box: view-box;
+  transform-origin: 100px 158px;
+  animation: legCelebrateLeft 0.5s ease-in-out infinite alternate;
+}
+
+.anim-leg-celebrate-right {
+  transform-box: view-box;
+  transform-origin: 100px 158px;
+  animation: legCelebrateRight 0.5s ease-in-out infinite alternate 0.15s;
+}
+
+@keyframes armTremble {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-1px, 0.5px);
+  }
+  40% {
+    transform: translate(1px, -0.5px);
+  }
+  60% {
+    transform: translate(-0.5px, -1px);
+  }
+  80% {
+    transform: translate(0.5px, 1px);
+  }
+}
+
+.anim-arm-tremble {
+  animation: armTremble 0.15s ease-in-out infinite;
+}
+
+/* ========================================================================== */
+/* MOVING SKY CLOUDS (PARALLAX HORIZONTAL DRIFT BEHIND STICKMAN)              */
+/* ========================================================================== */
+
+@keyframes skyCloudDrift {
+  0% {
+    transform: translate3d(-320px, 0, 0);
+  }
+  50% {
+    transform: translate3d(260px, -6px, 0);
+  }
+  100% {
+    transform: translate3d(860px, 0, 0);
+  }
+}
+
+.anim-sky-cloud-slow {
+  animation: skyCloudDrift 42s linear infinite;
+  will-change: transform;
+}
+
+.anim-sky-cloud-mid {
+  animation: skyCloudDrift 32s linear infinite;
+  will-change: transform;
+}
+
+.anim-sky-cloud-fast {
+  animation: skyCloudDrift 24s linear infinite;
+  will-change: transform;
+}
